@@ -1,0 +1,100 @@
+always_read:
+  - rules/classification-principles.md
+  - rules/output-discipline.md
+
+tasks:
+  - id: intake
+    labels:
+      en: Clarify governance intent
+      zh: 澄清 docs 治理意图
+    route: follow `workflows/intake.md`; ask up to 3 questions, then route to audit-docs, classify-content, monorepo-governance, design-governance, or rescue-oversized-skill
+    required_reads:
+      - rules/classification-principles.md
+      - rules/output-discipline.md
+    workflow: workflows/intake.md
+    trigger_examples:
+      - 使用 docs-to-ai-constraints
+      - 帮我整理 docs
+      - 我不确定该怎么做
+  - id: audit-docs
+    labels:
+      en: Audit docs for AI development constraints
+      zh: 审计文档并提取 AI 开发约束
+    route: follow `workflows/audit-docs.md`; ref `references/classification-matrix.md`
+    required_reads:
+      - rules/classification-principles.md
+      - rules/output-discipline.md
+      - references/classification-matrix.md
+    workflow: workflows/audit-docs.md
+    trigger_examples:
+      - 从 docs 提取 AI 开发规范
+      - 整理项目文档给 AI 用
+      - audit docs for agent rules
+  - id: classify-content
+    labels:
+      en: Decide rule vs workflow vs reference vs skill
+      zh: 判断 rule / workflow / reference / skill
+    route: follow `workflows/classify-content.md`; ref `references/classification-matrix.md`
+    required_reads:
+      - rules/classification-principles.md
+      - references/classification-matrix.md
+    workflow: workflows/classify-content.md
+    trigger_examples:
+      - rule 还是 skill
+      - 这类文档应该放哪
+      - classify these docs
+  - id: design-governance
+    labels:
+      en: Design AI governance output
+      zh: 设计 AI 开发约束体系
+    route: follow `workflows/design-governance.md`; ref `references/migration-checklist.md`
+    required_reads:
+      - rules/classification-principles.md
+      - rules/output-discipline.md
+      - references/migration-checklist.md
+    workflow: workflows/design-governance.md
+    trigger_examples:
+      - 设计 AI 开发约束体系
+      - 项目交给 AI 开发
+      - agent development governance
+  - id: monorepo-governance
+    labels:
+      en: Design monorepo AI governance
+      zh: 设计 monorepo AI 约束治理
+    route: follow `workflows/monorepo-governance.md`; ref `references/monorepo-scope-matrix.md`
+    required_reads:
+      - rules/classification-principles.md
+      - rules/output-discipline.md
+      - references/classification-matrix.md
+      - references/monorepo-scope-matrix.md
+    workflow: workflows/monorepo-governance.md
+    trigger_examples:
+      - monorepo 项目怎么拆 AI 规则
+      - 每个子项目拆入口文件
+      - 按 package 拆 rules
+  - id: rescue-oversized-skill
+    labels:
+      en: Rescue an oversized docs skill
+      zh: 挽救大而全的文档 skill
+    route: follow `workflows/rescue-oversized-skill.md`; ref `references/rescue-patterns.md`
+    required_reads:
+      - rules/classification-principles.md
+      - rules/output-discipline.md
+      - references/classification-matrix.md
+      - references/rescue-patterns.md
+    workflow: workflows/rescue-oversized-skill.md
+    trigger_examples:
+      - 所有文档做成了一个大 skill
+      - 挽救大 skill
+      - split this huge skill
+  - id: other
+    labels:
+      en: Other / unlisted task
+      zh: 其他 / 未列出的任务
+    route: follow `workflows/intake.md` when goal, scope, or output mode is unclear; otherwise choose the closest workflow by filename
+    required_reads:
+      - rules/classification-principles.md
+      - rules/output-discipline.md
+    workflow: workflows/intake.md
+    trigger_examples:
+      - 其他没有明确路由的任务
