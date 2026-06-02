@@ -1,0 +1,75 @@
+# Source of truth for the task routes summarized in SKILL.md.
+
+always_read:
+  - rules/context-layers.md
+  - rules/rule-writing.md
+
+tasks:
+  - id: place-rule
+    labels:
+      en: Decide where a rule belongs
+      zh: 规则放置决策
+    route: follow `workflows/design-rule-system.md`; ref `references/placement-matrix.md`
+    required_reads:
+      - rules/context-layers.md
+      - rules/rule-writing.md
+      - references/placement-matrix.md
+    workflow: workflows/design-rule-system.md
+    trigger_examples:
+      - 放 CLAUDE.md 还是 Memory
+      - 这条规则应该放哪
+      - where should this instruction live
+  - id: refactor-claude
+    labels:
+      en: Refactor CLAUDE.md / .claude/rules
+      zh: 重构 CLAUDE.md / .claude/rules
+    route: follow `workflows/design-rule-system.md`; ref `references/claude-code-loading.md`
+    required_reads:
+      - rules/context-layers.md
+      - rules/rule-writing.md
+      - references/claude-code-loading.md
+    workflow: workflows/design-rule-system.md
+    trigger_examples:
+      - 重写 CLAUDE.md
+      - 拆分 .claude/rules
+      - 整理 Claude Code 配置
+  - id: design-memory
+    labels:
+      en: Design MEMORY.md / topic memories
+      zh: 设计 MEMORY.md / topic memories
+    route: follow `workflows/design-rule-system.md`; ref `references/placement-matrix.md`
+    required_reads:
+      - rules/context-layers.md
+      - rules/rule-writing.md
+      - references/placement-matrix.md
+    workflow: workflows/design-rule-system.md
+    trigger_examples:
+      - 设计 MEMORY.md
+      - 记录到 memory
+      - persistent memory strategy
+  - id: audit-rules
+    labels:
+      en: Audit an existing rule architecture
+      zh: 审查现有规则架构
+    route: follow `workflows/design-rule-system.md`; read both references
+    required_reads:
+      - rules/context-layers.md
+      - rules/rule-writing.md
+      - references/placement-matrix.md
+      - references/claude-code-loading.md
+    workflow: workflows/design-rule-system.md
+    trigger_examples:
+      - 规则不生效
+      - 审查上下文注入
+      - audit agent instructions
+  - id: other
+    labels:
+      en: Other / unlisted task
+      zh: 其他 / 未列出的任务
+    route: use Always Read files, then choose the closest reference by filename
+    required_reads:
+      - rules/context-layers.md
+      - rules/rule-writing.md
+    workflow: workflows/design-rule-system.md
+    trigger_examples:
+      - 其他没有明确路由的任务
