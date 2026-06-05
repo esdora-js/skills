@@ -17,6 +17,7 @@ npx skills add esdora-js/skills --skill <skill-name>
 ```sh
 npx skills add esdora-js/skills --skill boris-prompts
 npx skills add esdora-js/skills --skill docs-to-ai-constraints
+npx skills add esdora-js/skills --skill git-commit-batcher
 npx skills add esdora-js/skills --skill rule-based-architecture
 ```
 
@@ -26,6 +27,7 @@ npx skills add esdora-js/skills --skill rule-based-architecture
 |---|---|---|
 | [`boris-prompts`](skills/boris-prompts/README.md) | 编写、改写、压缩高质量 LLM / AI agent instruction prompt | 你想把一个任务交给 Claude Code、ChatGPT、Gemini、Cursor 等模型，但不知道怎么写提示词 |
 | [`docs-to-ai-constraints`](skills/docs-to-ai-constraints/README.md) | 从大量项目文档中提取 AI 开发约束，并分类为 rules、workflows、references、memory candidates 或 skills | 项目文档很多，想整理成 AI 可执行、可遵守、可维护的开发治理体系 |
+| [`git-commit-batcher`](skills/git-commit-batcher/README.md) | 分析当前 Git 变更，按最小可回滚意图拆分提交批次，并生成或执行 Conventional Commits | 你想提交当前改动、生成 commit message、拆分 commit，或在提交前确认 staged / unstaged 变更边界 |
 | [`rule-based-architecture`](skills/rule-based-architecture/README.md) | 设计或重构 agent rule / memory / context injection 架构 | 你在整理 `CLAUDE.md`、`.claude/rules`、memory 或类似 agent 指令体系 |
 
 ## 如何选择
@@ -33,6 +35,8 @@ npx skills add esdora-js/skills --skill rule-based-architecture
 如果你要写给模型的 prompt，选择 `boris-prompts`。
 
 如果你手上是一堆项目文档，想知道哪些应该变成 AI 开发规范、哪些只是背景资料，选择 `docs-to-ai-constraints`。
+
+如果你需要把当前 Git 变更拆成清晰、安全、可回滚的提交批次，或只想生成符合规范的 commit message，选择 `git-commit-batcher`。
 
 如果你已经在设计 agent 规则系统，想决定规则放在 `CLAUDE.md`、`.claude/rules`、memory 还是本地文件，选择 `rule-based-architecture`。
 
