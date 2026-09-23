@@ -62,7 +62,7 @@ npx skills add esdora-js/skills --skill git-commit-batcher
 ## 核心原则
 
 - 每个提交都应该能独立回滚，并保持仓库状态 coherent。
-- 不使用 `git add .`，只暂存明确路径；每次提交前 index 必须与当前批次完全一致。
+- 不使用 `git add .`，只暂存明确路径；每次提交前 index 必须与当前批次完全一致（部分暂存文件精确到 hunk）。
 - 不覆盖、不清理、不混入无关改动。
 - 本地 commit 配置优先于默认规则。
 - 未经明确确认，不执行 commit；确认后逐批执行，异常才打断。

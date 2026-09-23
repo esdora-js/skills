@@ -17,6 +17,20 @@ git ls-files --others --exclude-standard
 
 Rules:
 
+- Empty state: if the staged, unstaged, and untracked sets are all empty,
+  report "工作区干净，无改动可提交" and stop.
+- Repository transaction guard: if `git status --short` shows unmerged paths
+  (`UU`, `AA`, `DD`, `AU`, `UA`, `DU`, `UD`) or a merge, rebase, or
+  cherry-pick is in progress (check `git rev-parse --git-path MERGE_HEAD` /
+  `REBASE_HEAD` / `CHERRY_PICK_HEAD`), stop and report the in-progress
+  operation; never plan or execute commits until the user finishes or aborts
+  it. If HEAD is detached (`git symbolic-ref -q HEAD` fails), warn in the
+  plan that commits will land on a detached HEAD.
+- Partial-staging registry: files appearing in both
+  `git diff --cached --name-status` and `git diff --name-status` are
+  partially staged — record them. Under 仅暂存区 scope their in-scope
+  content is exactly the staged hunks; never re-add them, and use the patch
+  save/restore procedure in `execute.md` when they must move between batches.
 - Record the exact staged set. In the final plan every staged file must be
   accounted for: assigned to a batch, or explicitly listed as
   "保持暂存，本次不提交". No staged file may be silently merged into a batch.
@@ -25,8 +39,6 @@ Rules:
   Until answered: do not alter the index, stage additional files, or commit.
 - If only staged changes exist, the scope is the staged set; state it in the
   plan without asking. Untracked files count as the "not added" side.
-- Detect commit-time hooks now (see Step 2) so their cost is known before
-  planning.
 
 ### Message-only exit
 
@@ -34,7 +46,9 @@ If the user asked only for commit message text: fix the scope (staged set by
 default; if nothing is staged, 询问用户并等待确认 which changes), read Step 2
 and the FORMAT rules in Step 3, draft the message, and output only the raw
 commit message text — no greeting, no explanation, no Markdown fence. Skip
-triage, grouping, and the confirmation gate.
+triage, grouping, and the confirmation gate. If the chosen scope spans
+multiple intents, suggest the full batched flow instead, unless the user
+confirms one message should cover everything.
 
 ## Step 2 — DISCOVER (inside the Git root only)
 
@@ -74,8 +88,9 @@ Precedence when drafting messages and scopes:
 
 Detect:
 
-- `.husky/` directory; non-sample `.git/hooks/pre-commit`,
-  `.git/hooks/prepare-commit-msg`, `.git/hooks/commit-msg`
+- `.husky/` directory; non-sample `pre-commit`, `prepare-commit-msg`, and
+  `commit-msg` under `"$(git rev-parse --git-common-dir)/hooks"` (this
+  resolves correctly in worktrees and submodules, where `.git` is a file)
 - `package.json` fields or scripts using `lint-staged`, `simple-git-hooks`,
   `precommit-hook`; `.pre-commit-config.yaml`
 - For lint-staged, also flag risky options in config or scripts: `--no-stash`,
@@ -110,10 +125,15 @@ approved together with the batches.
    whole file to the dominant group and note it in the plan. Offer hunk-level
    split only as an explicit option the user must choose at the gate; never
    run interactive staging before approval.
-4. Order batches: `chore`/`build` → `refactor` → `fix`/`feat` → `perf` →
-   `test` → `docs`/`style`. Every batch must be independently revertible: if
-   reverting batch N would require reverting batch M, the split is wrong.
-5. Risk per batch: low (docs, tests, narrow config metadata), medium (scoped
+4. Tests belong in the same batch as the change they cover; a test batch
+   that would fail after reverting its change batch violates independent
+   revertibility and must be merged with it. Only independently meaningful
+   tests (e.g. covering pre-existing behavior) may form their own batch.
+5. Order independent batches: `chore`/`build` → `refactor` → `fix`/`feat` →
+   `perf` → `test` → `docs`/`style`. Every batch must be independently
+   revertible: if reverting batch N would require reverting batch M, the
+   split is wrong.
+6. Risk per batch: low (docs, tests, narrow config metadata), medium (scoped
    implementation, tested refactors), high (public API changes, data
    migrations, auth/security, build/release pipeline, lockfile churn, behavior
    changes without tests). Breaking changes are always high.
@@ -163,6 +183,8 @@ doubt, present it again before asking.
 - 按此提交全部批次 / 修改指定批次或 message / 只输出 message / 停止
 
 Support targeted revisions (合并批次 2 和 3、把文件 X 挪到批次 1、改批次 2
-的 type) and re-present the plan. On approval, read `execute.md` and execute
-all batches without further confirmation; interrupt only for the anomalies
-defined there.
+的 type) and re-present the plan. If the revision loop exceeds one round, or
+the user returns after stepping away, re-run the INVENTORY snapshot before
+re-presenting so the plan never rests on stale state. On approval, read
+`execute.md` and execute all batches without further confirmation; interrupt
+only for the anomalies defined there.

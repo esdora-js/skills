@@ -47,8 +47,9 @@ them there.
 - Never commit before the user explicitly approves the full plan.
 - Stage only exact paths (`git add -- path/to/file`); never `git add .`,
   `git add -A`, or broad globs.
-- Before each commit, the index must contain exactly the approved files of the
-  current batch.
+- Before each commit, the index must contain exactly the approved content of
+  the current batch — file membership and, for partially staged files, the
+  approved hunks only.
 - Treat every pre-existing uncommitted change as intentional user work: no
   destructive Git commands, no cleanup of untracked files, no broad reformatting.
 - Never read or display contents of files likely to contain secrets (`.env*`,
