@@ -38,51 +38,48 @@ npx skills add esdora-js/skills --skill git-commit-batcher
 
 ## 它会怎么工作
 
-1. 检查 `git status`、staged diff、unstaged diff 和 untracked 文件。
-2. 如果已有 staged 内容，先确认是否只分析暂存区。
-3. 读取项目本地 commit 规则，优先使用本地配置。
-4. 按改动意图、scope、风险、文件边界和 Conventional Commit type 拆分批次。
-5. 展示每个批次的文件、commit message、拆分理由和风险说明。
-6. 只有在用户明确确认后，才会执行 `git add -- <path>` 和 `git commit`。
+四步流程，常态只有两次询问：
+
+1. **INVENTORY**：只用 `git status` / `name-status` 盘点状态，不读任何文件内容。只有暂存与未暂存改动同时存在时，才询问提交范围。
+2. **DISCOVER**：在当前 Git root 内发现本地 commit 规范（commitlint、commitizen、commit template 等）和 commit-time hook（含 lint-staged 危险配置检测）。规范优先级：显式配置 > 一致的历史风格 > 内置默认。
+3. **PLAN**：先按路径元数据分类，只有意图不明确的文件才读 diff；再按 `(type, scope)` 机械分组、同一意图才合并、固定顺序排序，给出每个批次的 message、理由和风险。此时一次性确认完整计划（含 hook 处理策略）。
+4. **EXECUTE**：确认后逐批自动执行——精确路径暂存、校验 index 与批次完全一致、用 message 文件提交、复核剩余状态。只有发生计划外异常才会中止并询问。
+
+如果你只要求生成 commit message，它会在第 1 步后直接输出原始 message 文本，不走完整流程。
 
 ## 输出效果
 
 典型输出会包含：
 
-- 批次编号
+- 批次编号与 commit message
 - 文件列表
-- commit message
 - 拆分理由
 - 风险或 breaking-change 说明
+- 检测到 hook 时的处理策略
 
-如果你只要求生成 commit message，它会只输出原始 commit message 文本。
+执行完成后报告 commit hash、剩余未提交改动和被跳过的批次。
 
 ## 核心原则
 
 - 每个提交都应该能独立回滚，并保持仓库状态 coherent。
-- 不使用 `git add .`，只暂存明确路径。
+- 不使用 `git add .`，只暂存明确路径；每次提交前 index 必须与当前批次完全一致。
 - 不覆盖、不清理、不混入无关改动。
-- 本地 commit 配置优先于默认 Conventional Commits。
-- 未经明确确认，不执行 commit。
+- 本地 commit 配置优先于默认规则。
+- 未经明确确认，不执行 commit；确认后逐批执行，异常才打断。
+- commit 中永不添加 AI 归属标记。
 
 ## 文件结构
 
 ```text
 skills/git-commit-batcher/
-  SKILL.md
+  SKILL.md              # 触发条件、流程总览、不变量、路由
   README.md
-  rules/
-    batching.md
-    commit-format.md
-    git-safety.md
   workflows/
-    analyze-changes.md
-    confirm-and-commit.md
-    plan-batches.md
-  references/
-    config-discovery.md
-    self-check.md
+    plan.md             # 步骤 1-3：INVENTORY → DISCOVER → PLAN（含确认闸门）
+    execute.md          # 步骤 4：EXECUTE 逐批执行循环（确认后才加载）
 ```
+
+`workflows/execute.md` 只在用户批准计划后加载，保证执行规则在最危险的阶段前处于最新上下文。
 
 ## 边界
 
