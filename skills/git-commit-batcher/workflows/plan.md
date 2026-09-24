@@ -86,10 +86,13 @@ Precedence when drafting messages and scopes:
 
 1. Explicit local configuration.
 2. Consistent history — only when no explicit config exists: sample recent
-   subjects with `git log --format=%s -20`. Adopt the observed pattern
-   (format, language, scope style) only if the sample is clearly consistent;
-   if history is mixed, fall through and note "历史风格不一致，使用默认规则"
-   in the plan.
+   subjects with exactly `git log --format=%s -20` — never `git log` full
+   format, never `-p`; 20 subject lines cost ~1 KB of context, the full
+   formats cost orders of magnitude more. One sample serves both style and
+   scope: the subjects already carry the `(scope)` values to reuse. Adopt
+   the observed pattern (format, language, scope style) only if the sample
+   is clearly consistent; if history is mixed, fall through and note
+   "历史风格不一致，使用默认规则" in the plan.
 3. Built-in defaults (FORMAT below).
 
 ### Commit-time hooks
@@ -154,20 +157,35 @@ approved together with the batches.
 
 ### FORMAT (defaults; local rules win)
 
-Subject: `<type>(<scope>): <subject>`; breaking: `<type>(<scope>)!: <subject>`.
+Structure: `<type>(<scope>)!: <subject>`, blank line, body, blank line,
+footer. Per-part rules:
 
-- Include `scope` unless local config allows omitting it; keep it short,
-  stable, and tied to the affected module or area.
-- Subject in Chinese, imperative wording ("添加", "修复", "重构"), never
+- **type** — the industry Conventional Commits enum: `feat`, `fix`, `docs`,
+  `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+  When local config declares a narrower enum, use it. Never invent types.
+- **scope** — a noun naming the affected module or area; never a file name,
+  never the change type; lowercase kebab-case. Resolution order: local
+  `scope-enum` > reuse scopes already present in the sampled history (no
+  synonym drift — if history uses `git-commit-batcher`, do not write
+  `commit-batcher`) > derive from structure (monorepo: package name; single
+  package: top-level module; a skills collection: the skill name). Omit
+  only for repo-wide changes or new top-level entities, and say so in the
+  plan.
+- **!** — breaking changes only; must pair with a body starting
+  `BREAKING CHANGE:` plus impact and migration path.
+- **subject** — Chinese, imperative wording ("添加", "修复", "重构"), never
   completed wording ("添加了"); no trailing period; near 50 characters.
-- Every claim in the subject and body must trace to an inspected diff hunk.
-  Filler subjects that remain true after deleting the file names are
-  forbidden ("更新相关代码", "调整配置", "优化逻辑", "重构核心模块").
-- Body only for non-trivial, risky, or cross-cutting changes: explain what and
-  why, not how; `-` bullets, lines within 72 characters; Chinese category
-  labels like `【新增】` are allowed.
-- A `!` subject must start the body with `BREAKING CHANGE:` plus impact and
-  migration path.
+  Every claim must trace to an inspected diff hunk; filler subjects that
+  remain true after deleting the file names are forbidden ("更新相关代码",
+  "调整配置", "优化逻辑", "重构核心模块").
+- **body** — only for non-trivial, risky, or cross-cutting changes: explain
+  what and why, not how; `-` bullets, lines within 72 characters. Order
+  bullets by reader impact: behavior-visible fixes or changes first,
+  internal refactors next, tests/docs/tooling last. Category labels
+  (【新增】/【修复】) only when bullets in one body have mixed natures and
+  the label disambiguates; in a single-nature body they repeat the commit
+  type and are forbidden as decoration.
+- **footer** — issue references only when history already uses them.
 
 ### GATE — one confirmation
 
