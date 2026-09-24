@@ -58,5 +58,15 @@ them there.
 - Local commit configuration overrides this skill's built-in defaults.
 - Never add AI attribution to commits: no "Generated with" trailers, no
   `Co-Authored-By` for the agent, no tool-name markers in message or committer.
+- Never bypass hooks or signing: no `--no-verify`, no `--no-gpg-sign`, no
+  hook-disabling flags — a failing hook is an anomaly, not an obstacle.
+- The user's pre-existing staging state is sacred: on any stop — completed
+  run, anomaly, or abort — either restore it exactly or report every saved
+  patch's full path and its recovery command.
+- Write all temporary artifacts (message files, saved patches) under
+  `"$(git rev-parse --git-dir)/commit-batcher/"`, never in the worktree.
+- Every commit message must be grounded in the actual diff: read the diff
+  before drafting; filler subjects that stay true after deleting the file
+  names are forbidden.
 - Describe every confirmation loop as "询问用户并等待确认"; never name one
   agent tool's interaction feature.

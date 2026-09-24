@@ -66,6 +66,9 @@ npx skills add esdora-js/skills --skill git-commit-batcher
 - 不覆盖、不清理、不混入无关改动。
 - 本地 commit 配置优先于默认规则。
 - 未经明确确认，不执行 commit；确认后逐批执行，异常才打断。
+- 永不使用 `--no-verify` 绕过 hook；hook 失败按异常处理。
+- 任何中止（异常、用户打断）都会恢复用户原有的暂存状态，或报备每个已保存 patch 的完整路径与恢复命令。
+- message 必须基于实际 diff 内容撰写，禁止删掉文件名后仍然成立的空泛 subject。
 - commit 中永不添加 AI 归属标记。
 
 ## 文件结构
@@ -77,6 +80,8 @@ skills/git-commit-batcher/
   workflows/
     plan.md             # 步骤 1-3：INVENTORY → DISCOVER → PLAN（含确认闸门）
     execute.md          # 步骤 4：EXECUTE 逐批执行循环（确认后才加载）
+  tests/
+    safety-test.sh      # 安全回归：patch 往返、部分暂存、中止恢复、hook 检测等 17 项断言
 ```
 
 `workflows/execute.md` 只在用户批准计划后加载，保证执行规则在最危险的阶段前处于最新上下文。

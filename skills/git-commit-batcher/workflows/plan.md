@@ -21,16 +21,22 @@ Rules:
   report "工作区干净，无改动可提交" and stop.
 - Repository transaction guard: if `git status --short` shows unmerged paths
   (`UU`, `AA`, `DD`, `AU`, `UA`, `DU`, `UD`) or a merge, rebase, or
-  cherry-pick is in progress (check `git rev-parse --git-path MERGE_HEAD` /
-  `REBASE_HEAD` / `CHERRY_PICK_HEAD`), stop and report the in-progress
-  operation; never plan or execute commits until the user finishes or aborts
-  it. If HEAD is detached (`git symbolic-ref -q HEAD` fails), warn in the
-  plan that commits will land on a detached HEAD.
+  cherry-pick is in progress, stop and report the in-progress operation;
+  never plan or execute commits until the user finishes or aborts it.
+  Detect with existence tests: `test -f "$(git rev-parse --git-path
+  MERGE_HEAD)"` and likewise `CHERRY_PICK_HEAD`; for rebase, `test -d` on
+  `rebase-merge` / `rebase-apply` under the same base — `REBASE_HEAD` is
+  unreliable and can be absent mid-rebase. If HEAD is detached
+  (`git symbolic-ref -q HEAD` fails), warn in the plan that commits will
+  land on a detached HEAD.
 - Partial-staging registry: files appearing in both
   `git diff --cached --name-status` and `git diff --name-status` are
   partially staged — record them. Under 仅暂存区 scope their in-scope
   content is exactly the staged hunks; never re-add them, and use the patch
   save/restore procedure in `execute.md` when they must move between batches.
+  Check `git diff --cached --numstat`: a partially staged file showing `-`
+  (binary) cannot round-trip through patch save/restore — if it must leave
+  the index, that is a stop-and-ask case, not a patch case.
 - Record the exact staged set. In the final plan every staged file must be
   accounted for: assigned to a batch, or explicitly listed as
   "保持暂存，本次不提交". No staged file may be silently merged into a batch.
@@ -43,9 +49,11 @@ Rules:
 ### Message-only exit
 
 If the user asked only for commit message text: fix the scope (staged set by
-default; if nothing is staged, 询问用户并等待确认 which changes), read Step 2
-and the FORMAT rules in Step 3, draft the message, and output only the raw
-commit message text — no greeting, no explanation, no Markdown fence. Skip
+default; if nothing is staged, 询问用户并等待确认 which changes), read the
+full diff of the scoped changes (the grounding rule in Step 3 applies —
+never draft from paths alone), read Step 2 and the FORMAT rules in Step 3,
+draft the message, and output only the raw commit message text — no
+greeting, no explanation, no Markdown fence. Skip
 triage, grouping, and the confirmation gate. If the chosen scope spans
 multiple intents, suggest the full batched flow instead, unless the user
 confirms one message should cover everything.
@@ -112,7 +120,13 @@ approved together with the batches.
   staged `git diff --cached -- path/to/file`; unstaged
   `git diff -- path/to/file`; untracked text files read directly when safe.
 - Generated or lock files: inspect nearby manifests or `--stat`, not content.
+- Renames (`R` status): record as `old → new`; staging, verification, and
+  batch file lists must carry both exact paths.
 - Do not alter the index during this phase.
+- Message grounding: before finalizing any batch's message you must have
+  read the full diff of every file in that batch (using the diff commands
+  above); generated/lockfiles may use `--stat` plus nearby manifests
+  instead. Triage may be metadata-first, but message drafting never is.
 
 ### Group (deterministic procedure)
 
@@ -146,6 +160,9 @@ Subject: `<type>(<scope>): <subject>`; breaking: `<type>(<scope>)!: <subject>`.
   stable, and tied to the affected module or area.
 - Subject in Chinese, imperative wording ("添加", "修复", "重构"), never
   completed wording ("添加了"); no trailing period; near 50 characters.
+- Every claim in the subject and body must trace to an inspected diff hunk.
+  Filler subjects that remain true after deleting the file names are
+  forbidden ("更新相关代码", "调整配置", "优化逻辑", "重构核心模块").
 - Body only for non-trivial, risky, or cross-cutting changes: explain what and
   why, not how; `-` bullets, lines within 72 characters; Chinese category
   labels like `【新增】` are allowed.
@@ -154,16 +171,41 @@ Subject: `<type>(<scope>): <subject>`; breaking: `<type>(<scope>)!: <subject>`.
 
 ### GATE — one confirmation
 
-Present the full plan compactly, every batch with:
+Present the full plan as one Markdown section per batch. The commit message
+is an objective artifact, commentary is not: keep them visually separate so
+the user approves exactly what will be committed.
+
+Rules:
+
+- The message gets its own fenced block, byte-identical to what execution
+  will write to the message file — same subject, same body, same line
+  breaks. Never abbreviate, re-wrap, or "polish" it during presentation;
+  the approved block is the single source of truth for step 4.
+- File lists are exhaustive: one path per line, no `...`, no "等 N 个文件".
+- Never pack batches into one shared code block — it blurs which bytes are
+  the message and invites ellipsis-style summarization.
+
+````markdown
+### Batch N — `type(scope): 中文 subject`
+
+**Files** (2):
+
+- path/to/one
+- path/to/two → renamed/to/two
+
+**Message**（逐字提交，与写入 message 文件的内容完全一致）:
 
 ```text
-Batch N — type(scope): 中文 subject
-Files: <count> — <path list>
-Message:
-<full commit message including body>
-Risk: low/medium/high — one-line reason
-Rationale: one line
+type(scope): 中文 subject
+
+body line 1
+body line 2
 ```
+
+**Risk**: low/medium/high — one-line reason
+**Rationale**: one line citing the concrete change point (which function,
+config key, or behavior changed) — not a restatement of intent
+````
 
 Append when applicable:
 
@@ -175,8 +217,9 @@ Append when applicable:
 - 历史风格不一致，使用默认规则
 
 Then 询问用户并等待确认 — exactly one question. The question is valid only
-after the complete plan is visible in the conversation: every batch's file
-list and full message text must appear in the presentation above. Never ask
+after the complete plan is visible in the conversation: every batch's
+exhaustive file list and full message text must appear in their own
+sections and fenced blocks as specified above. Never ask
 "是否按此计划提交" when the plan was only narrated or summarized — if in
 doubt, present it again before asking.
 

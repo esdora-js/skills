@@ -3,13 +3,23 @@
 Step 4 of the flow. Preconditions: approved batches with exact file lists,
 full messages, and order; staged-set accounting; approved hook policy.
 
+## Temporary artifacts
+
+Write every temporary artifact (message files, saved patches) under
+`D="$(git rev-parse --git-dir)/commit-batcher"` — create it first — and
+never in the worktree, where a stray file would corrupt the step 1/5
+snapshot comparisons. Report `$D` in the final report. Clean it only after
+all batches and all restorations succeed; on any stop it is the user's
+recovery source, so keep it and report its full path and contents.
+
 ## Per-batch loop
 
 For each batch in the approved order:
 
 1. **Snapshot.** Run `git status --short` and `git diff --cached --name-status`.
    Compare with what the plan expects at this point.
-2. **Make the index equal the batch.**
+2. **Make the index equal the batch.** `git commit` commits the entire
+   index, not named files — the index must contain exactly this batch.
    - Stage exact paths: `git add -- path/to/file another/path`.
    - Remove unrelated staged paths only if the approved plan says so, with
      exact paths: `git restore --staged -- path/to/file`. Before unstaging a
@@ -19,20 +29,30 @@ For each batch in the approved order:
    - Never run `git add` on a file in the plan's partial-staging registry
      when the scope is 仅暂存区: its approved content is already in the
      index, and re-adding would pull in unstaged hunks the user excluded.
-   - When a partially staged file must leave the index for another batch,
-     first save its staged patch (`git diff --cached -- path/to/file >
-     <patch-file>`); when its own batch comes, restore exactly those hunks
-     with `git apply --cached <patch-file>` instead of `git add`.
+   - When any staged path must leave the index — a partially staged file
+     moving to another batch, or any "保持暂存" path before the first
+     batch — first save its staged patch (`git diff --cached --binary --
+     path/to/file > "$D/<batch>-<name>.patch"`) and report the path. When
+     its turn comes, restore exactly those hunks with `git apply --cached
+     <patch-file>`, never `git add`: `git add` stages the current worktree
+     content, silently replacing what the user staged if a hook or editor
+     touched the file meanwhile. This applies to fully staged files too.
+   - If a partially staged file is binary (`git diff --cached --numstat`
+     shows `-`), do not attempt patch save/restore — stop and ask.
    - For approved partial staging, use the approved patch workflow and verify
      hunks in step 3.
 3. **Verify.** `git diff --cached --name-status` must equal the batch file
-   list exactly; `git diff --cached --stat` for a sanity check. For partial
+   list exactly; `git diff --cached --stat` for a sanity check. For renames,
+   both old and new paths must be staged and the `name-status` line must
+   match the approved `old → new` entry. For partial
    staging, inspect the staged hunks of each approved file with
    `git diff --cached -- path/to/file` and compare them against the approved
    or saved patch — file presence alone is not sufficient for partially
    staged files. Any mismatch → anomaly table.
-4. **Commit.** Write the message to a temp file and commit with
-   `git commit -F <file>` so multi-line bodies survive exactly. Never amend
+4. **Commit.** The message shown in its own fenced block at the gate is the
+   source of truth: write it verbatim to a file under `$D` (no re-wrapping,
+   no rewording) and commit with `git commit -F <file>` so multi-line bodies
+   survive exactly. Never amend
    except under the approved hook policy (step 5). Never add attribution.
 5. **Post-commit check.** Run `git status --short`.
    - Remaining state matches the plan → continue with the next batch.
@@ -47,10 +67,11 @@ For each batch in the approved order:
      changing the file on every run, treat it as an anomaly instead.
    - Anything else unexpected → anomaly table.
 6. **After the last batch**, restore the user's pre-existing staging state:
-   if the plan temporarily removed user-staged paths from the index (the
-   "保持暂存" list), restore them — with `git add -- path/to/file` for fully
-   staged files, or with the saved patch (`git apply --cached <patch-file>`)
-   for partially staged files — so the index looks as the user left it.
+   for every "保持暂存" path removed in step 2, restore with
+   `git apply --cached <saved patch>` — never `git add`, which would stage
+   whatever the worktree holds at that moment. Then verify: `git diff
+   --cached` must equal the staged diff recorded at INVENTORY; any mismatch
+   → anomaly table. Only after this verification passes may `$D` be cleaned.
 
 ## Anomalies — the only mid-execution interruptions
 
@@ -61,6 +82,7 @@ For each batch in the approved order:
 | Hook failed after modifying files (e.g. lint-staged error path) | Stop; report; point out that lint-staged creates a backup stash by default, recoverable via `git stash list` |
 | Hook modified files outside the approved batches | Leave them untouched; note them in the final report |
 | Staged hunks do not match the approved partial staging | Stop; change nothing; 询问用户并等待确认 |
+| Any stop with "保持暂存" or moved paths still out of the index | Before asking, either restore them per step 6, or report every saved patch's full path with its `git apply --cached <path>` recovery command — then stop |
 
 ## Resuming after an anomaly
 
@@ -78,3 +100,5 @@ After all approved batches finish (or the loop stops), report:
 - User-staged paths that were restored to the index (if any)
 - Batches that were skipped or blocked, and why
 - Hook side effects applied (amended) or left in the working tree
+- Temporary artifact directory `$D`: cleaned, or retained with its full
+  path and contents
